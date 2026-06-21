@@ -2,7 +2,6 @@
 const jwt = require('../config/jwt');
 const User = require('../models/User');
 const Session = require('../models/Session');
-const redis = require('../config/redis');
 
 const auth = {
   async authenticate(req, res, next) {
@@ -14,17 +13,6 @@ const auth = {
           success: false,
           message: 'No token provided'
         });
-      }
-
-      // Check if token is blacklisted in Redis
-      if (redis.isConnected()) {
-        const blacklisted = await redis.getCache(`blacklist:${token}`);
-        if (blacklisted) {
-          return res.status(401).json({
-            success: false,
-            message: 'Token has been revoked'
-          });
-        }
       }
 
       const decoded = jwt.verifyToken(token);
