@@ -1,3 +1,4 @@
+// src/controllers/authController.js
 const User = require('../models/User');
 const Session = require('../models/Session');
 const AuditLog = require('../models/AuditLog');
@@ -9,9 +10,84 @@ const logger = require('../utils/logger');
 const { AUDIT_ACTIONS } = require('../utils/constants');
 
 class AuthController {
+  // ===== REGISTER =====
+  async register(req, res) {
+    try {
+      const { email, username, password, fullName } = req.body;
+
+      // Validate input
+      if (!email || !username || !password || !fullName) {
+        return ApiResponse.badRequest(res, 'All fields are required');
+      }
+
+      // Check if email exists
+      const existingEmail = await User.findByEmail(email);
+      if (existingEmail) {
+        return ApiResponse.badRequest(res, 'Email already exists');
+      }
+
+      // Check if username exists
+      const existingUsername = await User.findByUsername(username);
+      if (existingUsername) {
+        return ApiResponse.badRequest(res, 'Username already exists');
+      }
+
+      // Hash password
+      const hashedPassword = await Encryption.hashPassword(password);
+
+      // Create user
+      const user = await User.create({
+        email,
+        username,
+        password: hashedPassword,
+        fullName,
+        role: 'user',
+        status: 'active',
+        licenseType: 'none'
+      });
+
+      // Log audit
+      await AuditLog.create({
+        userId: user.id,
+        userEmail: user.email,
+        action: 'register',
+        resourceType: 'user',
+        resourceId: user.id,
+        status: 'success',
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+        details: { registration: 'new_user' }
+      });
+
+      // Emit socket event
+      if (global.io) {
+        global.io.emit('user_registered', {
+          userId: user.id,
+          email: user.email,
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      return ApiResponse.created(res, {
+        user: user.toJSON(),
+        message: 'Registration successful. Please login.'
+      }, 'Registration successful');
+
+    } catch (error) {
+      logger.error('Register error:', error);
+      return ApiResponse.error(res, 'Registration failed: ' + error.message);
+    }
+  }
+
+  // ===== LOGIN =====
   async login(req, res) {
     try {
       const { email, password, rememberMe = false } = req.body;
+
+      // Validate input
+      if (!email || !password) {
+        return ApiResponse.badRequest(res, 'Email and password are required');
+      }
 
       // Find user by email
       const user = await User.findByEmail(email);
@@ -67,14 +143,18 @@ class AuthController {
         expiresAt: new Date(Date.now() + (rememberMe ? 7 : 1) * 24 * 60 * 60 * 1000)
       });
 
-      // Store in Redis
-      if (redis.isConnected()) {
-        await redis.setUserSession(user.id, {
-          sessionId: session.id,
-          token,
-          refreshToken,
-          expiresAt: session.expiresAt
-        });
+      // Store in Redis (dengan pengecekan aman)
+      if (redis && redis.isConnected && redis.isConnected()) {
+        try {
+          await redis.setUserSession(user.id, {
+            sessionId: session.id,
+            token,
+            refreshToken,
+            expiresAt: session.expiresAt
+          });
+        } catch (redisError) {
+          logger.warn('Redis store failed:', redisError.message);
+        }
       }
 
       // Update user last login
@@ -109,10 +189,11 @@ class AuthController {
 
     } catch (error) {
       logger.error('Login error:', error);
-      return ApiResponse.error(res, 'Login failed');
+      return ApiResponse.error(res, 'Login failed: ' + error.message);
     }
   }
 
+  // ===== REFRESH TOKEN =====
   async refreshToken(req, res) {
     try {
       const { refreshToken } = req.body;
@@ -153,14 +234,18 @@ class AuthController {
         lastActivity: new Date()
       });
 
-      // Update Redis
-      if (redis.isConnected()) {
-        await redis.setUserSession(user.id, {
-          sessionId: session.id,
-          token: newToken,
-          refreshToken: newRefreshToken,
-          expiresAt: session.expiresAt
-        });
+      // Update Redis (dengan pengecekan aman)
+      if (redis && redis.isConnected && redis.isConnected()) {
+        try {
+          await redis.setUserSession(user.id, {
+            sessionId: session.id,
+            token: newToken,
+            refreshToken: newRefreshToken,
+            expiresAt: session.expiresAt
+          });
+        } catch (redisError) {
+          logger.warn('Redis update failed:', redisError.message);
+        }
       }
 
       return ApiResponse.success(res, {
@@ -174,6 +259,7 @@ class AuthController {
     }
   }
 
+  // ===== LOGOUT =====
   async logout(req, res) {
     try {
       const userId = req.user.id;
@@ -184,12 +270,16 @@ class AuthController {
         await req.session.invalidate();
       }
 
-      // Blacklist token in Redis
-      if (redis.isConnected()) {
-        const ttl = Math.floor((req.session?.expiresAt - Date.now()) / 1000) || 3600;
-        await redis.setCache(`blacklist:${token}`, 'true', ttl);
-        await redis.deleteUserSession(userId);
-        await redis.setUserOffline(userId);
+      // Blacklist token in Redis (dengan pengecekan aman)
+      if (redis && redis.isConnected && redis.isConnected()) {
+        try {
+          const ttl = Math.floor((req.session?.expiresAt - Date.now()) / 1000) || 3600;
+          await redis.setCache(`blacklist:${token}`, 'true', ttl);
+          await redis.deleteUserSession(userId);
+          await redis.setUserOffline(userId);
+        } catch (redisError) {
+          logger.warn('Redis blacklist failed:', redisError.message);
+        }
       }
 
       // Log audit
@@ -214,13 +304,18 @@ class AuthController {
 
     } catch (error) {
       logger.error('Logout error:', error);
-      return ApiResponse.error(res, 'Logout failed');
+      return ApiResponse.error(res, 'Logout failed: ' + error.message);
     }
   }
 
+  // ===== FORGOT PASSWORD =====
   async forgotPassword(req, res) {
     try {
       const { email } = req.body;
+
+      if (!email) {
+        return ApiResponse.badRequest(res, 'Email is required');
+      }
 
       const user = await User.findByEmail(email);
       if (!user) {
@@ -229,14 +324,17 @@ class AuthController {
 
       // Generate reset token
       const resetToken = Encryption.generateRandomString(32);
-      const resetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
-      // Store reset token in Redis
-      if (redis.isConnected()) {
-        await redis.setCache(`reset:${email}`, resetToken, 3600);
+      // Store reset token in Redis (dengan pengecekan aman)
+      if (redis && redis.isConnected && redis.isConnected()) {
+        try {
+          await redis.setCache(`reset:${email}`, resetToken, 3600);
+        } catch (redisError) {
+          logger.warn('Redis store reset token failed:', redisError.message);
+        }
       }
 
-      // Send reset email (implement email service)
+      // TODO: Send reset email
       // await emailService.sendResetPassword(email, resetToken);
 
       return ApiResponse.success(res, null, 'Password reset link sent to email');
@@ -247,17 +345,26 @@ class AuthController {
     }
   }
 
+  // ===== RESET PASSWORD =====
   async resetPassword(req, res) {
     try {
       const { email, token, newPassword } = req.body;
 
+      if (!email || !token || !newPassword) {
+        return ApiResponse.badRequest(res, 'Email, token, and new password are required');
+      }
+
       // Verify reset token
       let isValid = false;
-      if (redis.isConnected()) {
-        const storedToken = await redis.getCache(`reset:${email}`);
-        isValid = storedToken === token;
-        if (isValid) {
-          await redis.deleteCache(`reset:${email}`);
+      if (redis && redis.isConnected && redis.isConnected()) {
+        try {
+          const storedToken = await redis.getCache(`reset:${email}`);
+          isValid = storedToken === token;
+          if (isValid) {
+            await redis.deleteCache(`reset:${email}`);
+          }
+        } catch (redisError) {
+          logger.warn('Redis verify reset token failed:', redisError.message);
         }
       }
 
@@ -292,10 +399,15 @@ class AuthController {
     }
   }
 
+  // ===== CHANGE PASSWORD =====
   async changePassword(req, res) {
     try {
       const { currentPassword, newPassword } = req.body;
       const user = req.user;
+
+      if (!currentPassword || !newPassword) {
+        return ApiResponse.badRequest(res, 'Current password and new password are required');
+      }
 
       // Verify current password
       const isValidPassword = await Encryption.comparePassword(currentPassword, user.password);
@@ -325,6 +437,7 @@ class AuthController {
     }
   }
 
+  // ===== VALIDATE TOKEN =====
   async validateToken(req, res) {
     try {
       const user = req.user;
@@ -337,6 +450,7 @@ class AuthController {
     }
   }
 
+  // ===== GET PROFILE =====
   async getProfile(req, res) {
     try {
       const user = req.user;
@@ -347,18 +461,22 @@ class AuthController {
     }
   }
 
+  // ===== VERIFY EMAIL =====
   async verifyEmail(req, res) {
     try {
       const { token } = req.body;
 
-      // Verify email token (implement this)
+      if (!token) {
+        return ApiResponse.badRequest(res, 'Verification token is required');
+      }
+
+      // TODO: Implement email verification
       // const email = await verifyEmailToken(token);
-      
-      // Update user
       // const user = await User.findByEmail(email);
       // await user.update({ isEmailVerified: true });
 
       return ApiResponse.success(res, null, 'Email verified successfully');
+
     } catch (error) {
       logger.error('Verify email error:', error);
       return ApiResponse.error(res, 'Failed to verify email');
