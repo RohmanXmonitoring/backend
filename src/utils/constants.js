@@ -1,3 +1,4 @@
+// src/utils/constants.js
 const constants = {
   // User Roles
   ROLES: {
@@ -93,7 +94,20 @@ const constants = {
     UPDATE_LICENSE: 'update_license',
     DELETE_LICENSE: 'delete_license',
     SEND_NOTIFICATION: 'send_notification',
-    UPDATE_SETTINGS: 'update_settings'
+    UPDATE_SETTINGS: 'update_settings',
+    // ===== FITUR BARU =====
+    SEND_INVITATION: 'send_invitation',
+    RESEND_INVITATION: 'resend_invitation',
+    CANCEL_INVITATION: 'cancel_invitation',
+    ACCEPT_INVITATION: 'accept_invitation',
+    START_SCREEN_SHARING: 'start_screen_sharing',
+    STOP_SCREEN_SHARING: 'stop_screen_sharing',
+    START_SCREEN_RECORDING: 'start_screen_recording',
+    STOP_SCREEN_RECORDING: 'stop_screen_recording',
+    DELETE_RECORDING: 'delete_recording',
+    MARK_MESSAGE_READ: 'mark_message_read',
+    DELETE_MESSAGE: 'delete_message',
+    VIEW_APP_USAGE: 'view_app_usage'
   },
 
   // Session Status
@@ -102,6 +116,103 @@ const constants = {
     EXPIRED: 'expired',
     INVALIDATED: 'invalidated',
     DELETED: 'deleted'
+  },
+
+  // ===== SCREEN SHARING =====
+  SCREEN_SHARING_STATUS: {
+    ACTIVE: 'active',
+    INACTIVE: 'inactive',
+    REQUESTED: 'requested',
+    PAUSED: 'paused',
+    STOPPED: 'stopped'
+  },
+
+  // ===== SCREEN RECORDING =====
+  SCREEN_RECORDING_STATUS: {
+    ACTIVE: 'active',
+    INACTIVE: 'inactive',
+    REQUESTED: 'requested',
+    PAUSED: 'paused',
+    STOPPED: 'stopped',
+    PROCESSING: 'processing',
+    COMPLETED: 'completed',
+    FAILED: 'failed',
+    DELETED: 'deleted'
+  },
+
+  // ===== APP MONITORING =====
+  APP_MONITORING_STATUS: {
+    ACTIVE: 'active',
+    INACTIVE: 'inactive',
+    PAUSED: 'paused'
+  },
+
+  APP_CATEGORIES: {
+    SOCIAL: 'social',
+    COMMUNICATION: 'communication',
+    ENTERTAINMENT: 'entertainment',
+    GAMES: 'games',
+    PRODUCTIVITY: 'productivity',
+    UTILITY: 'utility',
+    EDUCATION: 'education',
+    SHOPPING: 'shopping',
+    FINANCE: 'finance',
+    HEALTH: 'health',
+    NEWS: 'news',
+    TRAVEL: 'travel',
+    PHOTOGRAPHY: 'photography',
+    MUSIC: 'music',
+    VIDEO: 'video',
+    UNKNOWN: 'unknown'
+  },
+
+  // ===== MESSAGES =====
+  MESSAGE_TYPE: {
+    WHATSAPP: 'whatsapp',
+    TELEGRAM: 'telegram',
+    SMS: 'sms',
+    NOTIFICATION: 'notification',
+    EMAIL: 'email'
+  },
+
+  MESSAGE_STATUS: {
+    READ: 'read',
+    UNREAD: 'unread',
+    DELETED: 'deleted',
+    ARCHIVED: 'archived',
+    SENT: 'sent',
+    DELIVERED: 'delivered',
+    FAILED: 'failed'
+  },
+
+  // ===== INVITATION =====
+  INVITATION_STATUS: {
+    PENDING: 'pending',
+    SENT: 'sent',
+    ACCEPTED: 'accepted',
+    EXPIRED: 'expired',
+    CANCELLED: 'cancelled'
+  },
+
+  INVITATION_TYPE: {
+    USER: 'user',
+    RESELLER: 'reseller',
+    ADMIN: 'admin'
+  },
+
+  // ===== RECORDING QUALITY =====
+  RECORDING_QUALITY: {
+    LOW: 'low',
+    MEDIUM: 'medium',
+    HIGH: 'high'
+  },
+
+  RECORDING_RESOLUTION: {
+    SD: '480p',
+    HD: '720p',
+    FULL_HD: '1080p',
+    QHD: '1440p',
+    UHD: '2160p'
   },
 
   // CORS Origins
@@ -121,6 +232,14 @@ const constants = {
     },
     STRICT: {
       windowMs: 5 * 60 * 1000, // 5 minutes
+      max: 10 // 10 requests per window
+    },
+    INVITATION: {
+      windowMs: 60 * 60 * 1000, // 1 hour
+      max: 20 // 20 requests per window
+    },
+    SCREEN_SHARING: {
+      windowMs: 60 * 1000, // 1 minute
       max: 10 // 10 requests per window
     }
   },
@@ -146,7 +265,10 @@ const constants = {
     LICENSE: 600, // 10 minutes
     PIN: 300, // 5 minutes
     SETTINGS: 3600, // 1 hour
-    DASHBOARD: 60 // 1 minute
+    DASHBOARD: 60, // 1 minute
+    INVITATION: 1800, // 30 minutes
+    APP_USAGE: 300, // 5 minutes
+    MESSAGES: 300 // 5 minutes
   },
 
   // Socket Events
@@ -164,6 +286,7 @@ const constants = {
     USER_STATUS_CHANGED: 'user_status_changed',
     USER_ONLINE: 'user_online',
     USER_OFFLINE: 'user_offline',
+    USER_REGISTERED: 'user_registered',
     
     // Device Events
     DEVICE_CONNECTED: 'device_connected',
@@ -176,6 +299,7 @@ const constants = {
     LICENSE_UPDATED: 'license_updated',
     LICENSE_EXPIRED: 'license_expired',
     LICENSE_STATUS_CHANGED: 'license_status_changed',
+    LICENSE_EXTENDED: 'license_extended',
     
     // PIN Events
     PIN_CREATED: 'pin_created',
@@ -191,6 +315,55 @@ const constants = {
     // Dashboard Events
     DASHBOARD_UPDATE: 'dashboard_update',
     STATISTICS_UPDATE: 'statistics_update',
+    
+    // ===== INVITATION EVENTS =====
+    INVITATION_SENT: 'invitation_sent',
+    INVITATION_ACCEPTED: 'invitation_accepted',
+    INVITATION_EXPIRED: 'invitation_expired',
+    INVITATION_CANCELLED: 'invitation_cancelled',
+    INVITATION_REMINDER: 'invitation_reminder',
+    
+    // ===== SCREEN SHARING EVENTS =====
+    SCREEN_SHARE_REQUEST: 'screen_share_request',
+    SCREEN_SHARE_ACCEPT: 'screen_share_accept',
+    SCREEN_SHARE_REJECT: 'screen_share_reject',
+    SCREEN_SHARE_STARTED: 'screen_share_started',
+    SCREEN_SHARE_STOPPED: 'screen_share_stopped',
+    SCREEN_SHARE_PAUSED: 'screen_share_paused',
+    SCREEN_SHARE_RESUMED: 'screen_share_resumed',
+    SCREEN_SHARE_FRAME: 'screen_share_frame',
+    SCREEN_SHARE_FRAME_RECEIVED: 'screen_share_frame_received',
+    REQUEST_SCREEN_FRAME: 'request_screen_frame',
+    
+    // ===== SCREEN RECORDING EVENTS =====
+    SCREEN_RECORDING_REQUEST: 'screen_recording_request',
+    SCREEN_RECORDING_ACCEPT: 'screen_recording_accept',
+    SCREEN_RECORDING_REJECT: 'screen_recording_reject',
+    SCREEN_RECORDING_STARTED: 'screen_recording_started',
+    SCREEN_RECORDING_STOPPED: 'screen_recording_stopped',
+    SCREEN_RECORDING_PAUSED: 'screen_recording_paused',
+    SCREEN_RECORDING_RESUMED: 'screen_recording_resumed',
+    SCREEN_RECORDING_COMPLETED: 'screen_recording_completed',
+    RECORDING_CHUNK: 'recording_chunk',
+    RECORDING_CHUNK_RECEIVED: 'recording_chunk_received',
+    
+    // ===== APP MONITORING EVENTS =====
+    APP_OPENED: 'app_opened',
+    APP_CLOSED: 'app_closed',
+    APP_FOREGROUND: 'app_foreground',
+    APP_BACKGROUND: 'app_background',
+    APP_USAGE_UPDATE: 'app_usage_update',
+    APP_USAGE_UPDATED: 'app_usage_updated',
+    APP_INSTALLED: 'app_installed',
+    APP_UNINSTALLED: 'app_uninstalled',
+    
+    // ===== MESSAGE EVENTS =====
+    MESSAGE_RECEIVED: 'message_received',
+    NEW_MESSAGE: 'new_message',
+    MESSAGE_READ: 'message_read',
+    MESSAGE_DELETED: 'message_deleted',
+    MESSAGE_SENT: 'message_sent',
+    MESSAGE_DELIVERED: 'message_delivered',
     
     // System Events
     SYSTEM_STATUS: 'system_status',
@@ -233,7 +406,18 @@ const constants = {
     USER_NOT_FOUND: 'User not found',
     DEVICE_NOT_FOUND: 'Device not found',
     LICENSE_NOT_FOUND: 'License not found',
-    PIN_NOT_FOUND: 'PIN not found'
+    PIN_NOT_FOUND: 'PIN not found',
+    // ===== FITUR BARU =====
+    INVITATION_NOT_FOUND: 'Invitation not found',
+    INVITATION_EXPIRED: 'Invitation has expired',
+    INVITATION_ALREADY_ACCEPTED: 'Invitation already accepted',
+    INVITATION_INVALID: 'Invalid invitation',
+    SCREEN_SHARING_ACTIVE: 'Screen sharing already active',
+    SCREEN_SHARING_NOT_FOUND: 'No active screen sharing',
+    RECORDING_ACTIVE: 'Recording already in progress',
+    RECORDING_NOT_FOUND: 'Recording not found',
+    MESSAGE_NOT_FOUND: 'Message not found',
+    APP_NOT_FOUND: 'App not found on device'
   },
 
   // Success Messages
@@ -253,7 +437,25 @@ const constants = {
     PIN_CREATED: 'PIN generated successfully',
     PIN_UPDATED: 'PIN updated successfully',
     PIN_DELETED: 'PIN deleted successfully',
-    NOTIFICATION_SENT: 'Notification sent successfully'
+    NOTIFICATION_SENT: 'Notification sent successfully',
+    // ===== FITUR BARU =====
+    INVITATION_SENT: 'Invitation sent successfully',
+    INVITATION_RESENT: 'Invitation resent successfully',
+    INVITATION_ACCEPTED: 'Invitation accepted successfully',
+    INVITATION_CANCELLED: 'Invitation cancelled successfully',
+    SCREEN_SHARING_STARTED: 'Screen sharing started',
+    SCREEN_SHARING_STOPPED: 'Screen sharing stopped',
+    SCREEN_SHARING_PAUSED: 'Screen sharing paused',
+    SCREEN_SHARING_RESUMED: 'Screen sharing resumed',
+    RECORDING_STARTED: 'Recording started',
+    RECORDING_STOPPED: 'Recording stopped',
+    RECORDING_PAUSED: 'Recording paused',
+    RECORDING_RESUMED: 'Recording resumed',
+    RECORDING_COMPLETED: 'Recording completed',
+    RECORDING_DELETED: 'Recording deleted',
+    MESSAGE_READ: 'Message marked as read',
+    MESSAGE_DELETED: 'Message deleted',
+    ALL_MESSAGES_READ: 'All messages marked as read'
   },
 
   // Regex Patterns
@@ -263,7 +465,9 @@ const constants = {
     PASSWORD: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,}$/,
     PHONE: /^\+?[\d\s-]{10,15}$/,
     PIN_CODE: /^[A-Z0-9]{6}$/,
-    LICENSE_KEY: /^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/
+    LICENSE_KEY: /^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/,
+    INVITE_CODE: /^[A-Z0-9]{8}$/,
+    DEVICE_ID: /^[a-zA-Z0-9\-_]{8,}$/
   },
 
   // License Durations (in days)
@@ -282,7 +486,21 @@ const constants = {
     TOKEN_EXPIRY: '15m',
     REFRESH_TOKEN_EXPIRY: '7d',
     MAX_LOGIN_ATTEMPTS: 5,
-    LOCKOUT_DURATION: 30 // minutes
+    LOCKOUT_DURATION: 30, // minutes
+    // ===== FITUR BARU =====
+    INVITATION_EXPIRY_DAYS: 7,
+    MAX_INVITATIONS_PER_USER: 50,
+    SCREEN_CAPTURE_INTERVAL: 1000, // 1 second
+    MAX_SCREEN_SHARING_DURATION: 3600, // 1 hour
+    MAX_RECORDING_DURATION: 1800, // 30 minutes
+    MAX_MESSAGE_HISTORY: 1000,
+    APP_USAGE_SYNC_INTERVAL: 30000, // 30 seconds
+    SCREEN_RECORDING_QUALITY: 'medium',
+    RECORDING_FRAME_RATE: 15, // fps
+    RECORDING_BITRATE: 1024, // kbps
+    RECORDING_RESOLUTION: '720p',
+    INVITATION_REMINDER_DAYS: [3, 1], // Kirim reminder 3 hari dan 1 hari sebelum expired
+    MAX_MESSAGES_PER_DEVICE: 10000
   },
 
   // Feature Flags
@@ -295,7 +513,85 @@ const constants = {
     ENABLE_PIN_ENROLLMENT: true,
     ENABLE_NOTIFICATIONS: true,
     ENABLE_AUDIT_LOG: true,
-    ENABLE_REALTIME_UPDATES: true
+    ENABLE_REALTIME_UPDATES: true,
+    // ===== FITUR BARU =====
+    ENABLE_INVITATION: true,
+    ENABLE_SCREEN_SHARING: true,
+    ENABLE_SCREEN_RECORDING: true,
+    ENABLE_APP_MONITORING: true,
+    ENABLE_MESSAGE_READING: true,
+    ENABLE_BULK_INVITATION: true,
+    ENABLE_SCREEN_CAPTURE: true,
+    ENABLE_RECORDING_STORAGE: true
+  },
+
+  // ===== INVITATION REMINDER =====
+  INVITATION_REMINDER: {
+    INTERVAL: '0 * * * *', // Setiap jam
+    DAYS: [3, 1], // 3 hari dan 1 hari sebelum expired
+    MAX_REMINDERS: 3
+  },
+
+  // ===== RECORDING SETTINGS =====
+  RECORDING_SETTINGS: {
+    QUALITY_LEVELS: {
+      low: { bitrate: 512, frameRate: 10, resolution: '480p' },
+      medium: { bitrate: 1024, frameRate: 15, resolution: '720p' },
+      high: { bitrate: 2048, frameRate: 30, resolution: '1080p' }
+    },
+    MAX_FILE_SIZE: 500 * 1024 * 1024, // 500MB
+    MAX_RECORDING_DURATION: 3600, // 1 hour
+    STORAGE_PATH: 'recordings/'
+  },
+
+  // ===== MESSAGE FILTERS =====
+  MESSAGE_FILTERS: {
+    SPAM_KEYWORDS: ['spam', 'promo', 'advertisement'],
+    SENSITIVE_WORDS: ['password', 'credit card', 'bank'],
+    MAX_MESSAGE_LENGTH: 10000
+  },
+
+  // ===== APP CATEGORIES MAPPING =====
+  APP_CATEGORY_MAPPING: {
+    // Social Media
+    'com.facebook.katana': 'social',
+    'com.instagram.android': 'social',
+    'com.twitter.android': 'social',
+    'com.tiktok.android': 'social',
+    'com.snapchat.android': 'social',
+    'com.pinterest': 'social',
+    'com.reddit.frontpage': 'social',
+    // Communication
+    'com.whatsapp': 'communication',
+    'org.telegram.messenger': 'communication',
+    'com.discord': 'communication',
+    'com.slack': 'communication',
+    'com.microsoft.teams': 'communication',
+    'com.zoom.videomeetings': 'communication',
+    'com.google.android.apps.messaging': 'communication',
+    // Entertainment
+    'com.netflix.mediaclient': 'entertainment',
+    'com.spotify.music': 'entertainment',
+    'com.google.android.youtube': 'entertainment',
+    'com.disney.disneyplus': 'entertainment',
+    'com.amazon.avod.thirdpartyclient': 'entertainment',
+    // Games
+    'com.mobile.legends': 'games',
+    'com.pubg.newstate': 'games',
+    'com.garena.game.codm': 'games',
+    'com.activision.callofduty.shooter': 'games',
+    // Productivity
+    'com.google.android.apps.docs': 'productivity',
+    'com.google.android.apps.sheets': 'productivity',
+    'com.google.android.apps.slides': 'productivity',
+    'com.microsoft.office.word': 'productivity',
+    'com.microsoft.office.excel': 'productivity',
+    'com.microsoft.office.powerpoint': 'productivity',
+    // Utility
+    'com.google.android.apps.maps': 'utility',
+    'com.android.chrome': 'utility',
+    'com.google.android.apps.photos': 'utility',
+    'com.google.android.gm': 'utility'
   }
 };
 
