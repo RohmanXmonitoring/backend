@@ -32,12 +32,33 @@ const logger = require('./utils/logger');
 const app = express();
 const server = http.createServer(app);
 
+// ===== ERROR HANDLING UNTUK STARTUP =====
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+  // Jangan exit di production
+  if (process.env.NODE_ENV !== 'production') {
+    process.exit(1);
+  }
+});
+
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled Rejection:', err);
+  // Jangan exit di production
+  if (process.env.NODE_ENV !== 'production') {
+    process.exit(1);
+  }
+});
+
 // ===== MIDDLEWARE =====
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" },
-  contentSecurityPolicy: false,
-  crossOriginEmbedderPolicy: false
-}));
+try {
+  app.use(helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false
+  }));
+} catch (err) {
+  console.error('Helmet error:', err);
+}
 
 app.use(compression());
 
@@ -51,127 +72,66 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-app.use(validator.sanitizeXSS);
-app.use(validator.sanitizeMongo);
+// Sanitization
+app.use((req, res, next) => {
+  if (req.body) {
+    Object.keys(req.body).forEach(key => {
+      if (typeof req.body[key] === 'string') {
+        req.body[key] = req.body[key].replace(/[<>]/g, '');
+      }
+    });
+  }
+  next();
+});
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Rate limiting
-app.use('/api/auth', RateLimiter.create({
-  windowMs: 15 * 60 * 1000,
-  max: 50,
-  message: 'Too many authentication attempts'
-}));
-
-app.use('/api', RateLimiter.create({
-  windowMs: 15 * 60 * 1000,
-  max: 200,
-  message: 'Too many requests'
-}));
-
-// ===== ROUTES =====
+// ===== ROUTES - SEDERHANAKAN UNTUK TESTING =====
 
 // ROOT ROUTE
 app.get('/', (req, res) => {
   res.json({
     success: true,
-    message: 'Admin Backend API',
+    message: 'Admin Backend API Running',
     version: '1.0.0',
-    status: 'running',
-    environment: process.env.NODE_ENV,
-    endpoints: {
-      api: '/api',
-      health: '/health',
-      docs: 'https://github.com/your-repo'
-    },
+    status: 'online',
     timestamp: new Date().toISOString()
   });
 });
 
-// API ROOT ROUTE - INI YANG DIMINTA
-app.get('/api', (req, res) => {
-  res.json({
-    success: true,
-    message: 'Admin Backend API v1.0.0',
-    version: '1.0.0',
-    endpoints: {
-      auth: {
-        login: 'POST /api/auth/login',
-        register: 'POST /api/auth/register',
-        refresh: 'POST /api/auth/refresh',
-        logout: 'POST /api/auth/logout',
-        forgotPassword: 'POST /api/auth/forgot-password',
-        resetPassword: 'POST /api/auth/reset-password',
-        me: 'GET /api/auth/me'
-      },
-      users: {
-        list: 'GET /api/users',
-        create: 'POST /api/users',
-        detail: 'GET /api/users/:id',
-        update: 'PUT /api/users/:id',
-        delete: 'DELETE /api/users/:id',
-        suspend: 'POST /api/users/:id/suspend',
-        activate: 'POST /api/users/:id/activate'
-      },
-      devices: {
-        list: 'GET /api/devices',
-        detail: 'GET /api/devices/:id',
-        update: 'PUT /api/devices/:id',
-        delete: 'DELETE /api/devices/:id',
-        lostMode: 'POST /api/devices/:id/lost-mode'
-      },
-      licenses: {
-        list: 'GET /api/licenses',
-        create: 'POST /api/licenses',
-        detail: 'GET /api/licenses/:id',
-        update: 'PUT /api/licenses/:id',
-        delete: 'DELETE /api/licenses/:id',
-        extend: 'POST /api/licenses/:id/extend'
-      },
-      pins: {
-        list: 'GET /api/pins',
-        create: 'POST /api/pins',
-        detail: 'GET /api/pins/:id',
-        delete: 'DELETE /api/pins/:id',
-        disable: 'POST /api/pins/:id/disable'
-      },
-      notifications: {
-        list: 'GET /api/notifications',
-        create: 'POST /api/notifications',
-        detail: 'GET /api/notifications/:id',
-        delete: 'DELETE /api/notifications/:id',
-        broadcast: 'POST /api/notifications/broadcast'
-      },
-      dashboard: {
-        stats: 'GET /api/dashboard/stats',
-        statistics: 'GET /api/dashboard/statistics',
-        recent: 'GET /api/dashboard/recent-activity'
-      },
-      system: {
-        health: 'GET /health',
-        info: 'GET /api/system-info',
-        status: 'GET /api/status'
-      }
-    },
-    timestamp: new Date().toISOString()
-  });
-});
-
-// Health check
+// HEALTH CHECK - YANG PALING PENTING
 app.get('/health', (req, res) => {
-  res.json({
+  res.status(200).json({
     status: 'online',
     server: 'running',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    memory: process.memoryUsage(),
+    memory: {
+      rss: process.memoryUsage().rss,
+      heapTotal: process.memoryUsage().heapTotal,
+      heapUsed: process.memoryUsage().heapUsed
+    },
     version: process.env.npm_package_version || '1.0.0',
-    firebase: firebase.isInitialized() ? 'connected' : 'disconnected',
-    redis: redis.isConnected() ? 'connected' : 'disconnected'
+    environment: process.env.NODE_ENV || 'production'
   });
 });
 
-// API Status
+// API ROOT
+app.get('/api', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Admin Backend API v1.0.0',
+    endpoints: {
+      health: 'GET /health',
+      auth: 'POST /api/auth/login',
+      users: 'GET /api/users',
+      devices: 'GET /api/devices'
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+
+// API STATUS
 app.get('/api/status', (req, res) => {
   res.json({
     success: true,
@@ -182,34 +142,18 @@ app.get('/api/status', (req, res) => {
   });
 });
 
-// System info
-app.get('/api/system-info', (req, res) => {
-  const os = require('os');
-  res.json({
-    success: true,
-    data: {
-      nodeVersion: process.version,
-      platform: os.platform(),
-      arch: os.arch(),
-      cpus: os.cpus().length,
-      totalMemory: os.totalmem(),
-      freeMemory: os.freemem(),
-      uptime: process.uptime(),
-      env: process.env.NODE_ENV,
-      railway: !!process.env.RAILWAY_STATIC_URL
-    },
-    timestamp: new Date().toISOString()
-  });
-});
-
 // ===== API ROUTES =====
-app.use('/api/auth', authRoutes);
-app.use('/api/users', auth.authenticate, userRoutes);
-app.use('/api/devices', auth.authenticate, deviceRoutes);
-app.use('/api/licenses', auth.authenticate, licenseRoutes);
-app.use('/api/pins', auth.authenticate, pinRoutes);
-app.use('/api/notifications', auth.authenticate, notificationRoutes);
-app.use('/api/dashboard', auth.authenticate, dashboardRoutes);
+try {
+  app.use('/api/auth', authRoutes);
+  app.use('/api/users', auth.authenticate, userRoutes);
+  app.use('/api/devices', auth.authenticate, deviceRoutes);
+  app.use('/api/licenses', auth.authenticate, licenseRoutes);
+  app.use('/api/pins', auth.authenticate, pinRoutes);
+  app.use('/api/notifications', auth.authenticate, notificationRoutes);
+  app.use('/api/dashboard', auth.authenticate, dashboardRoutes);
+} catch (err) {
+  console.error('Route registration error:', err);
+}
 
 // ===== 404 HANDLER =====
 app.use((req, res) => {
@@ -218,34 +162,20 @@ app.use((req, res) => {
     message: `Route ${req.method} ${req.path} not found`,
     availableRoutes: {
       root: 'GET /',
-      api: 'GET /api',
       health: 'GET /health',
-      status: 'GET /api/status',
-      system: 'GET /api/system-info',
-      auth: 'POST /api/auth/login',
-      users: 'GET /api/users',
-      devices: 'GET /api/devices',
-      licenses: 'GET /api/licenses',
-      pins: 'GET /api/pins',
-      notifications: 'GET /api/notifications',
-      dashboard: 'GET /api/dashboard/stats'
-    },
-    timestamp: new Date().toISOString()
+      api: 'GET /api',
+      status: 'GET /api/status'
+    }
   });
 });
 
 // ===== ERROR HANDLER =====
 app.use((err, req, res, next) => {
-  logger.error('Error:', err);
-  
-  const statusCode = err.status || 500;
-  const message = statusCode === 500 ? 'Internal server error' : err.message;
-  
-  res.status(statusCode).json({
+  console.error('Error:', err.message);
+  res.status(err.status || 500).json({
     success: false,
-    message,
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
-    timestamp: new Date().toISOString()
+    message: err.message || 'Internal server error',
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
   });
 });
 
@@ -253,11 +183,27 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5000;
 const HOST = '0.0.0.0';
 
+server.on('error', (err) => {
+  console.error('Server error:', err);
+});
+
+server.on('listening', () => {
+  console.log(`✅ Server running on http://${HOST}:${PORT}`);
+  console.log(`📊 Environment: ${process.env.NODE_ENV || 'production'}`);
+  console.log(`📍 Health check: http://${HOST}:${PORT}/health`);
+});
+
 server.listen(PORT, HOST, () => {
-  console.log(`🚀 Server running on http://${HOST}:${PORT}`);
-  console.log(`📊 Environment: ${process.env.NODE_ENV}`);
-  console.log(`📍 Base URL: http://${HOST}:${PORT}`);
-  console.log(`📋 API Docs: http://${HOST}:${PORT}/api`);
+  console.log(`🚀 Server started on port ${PORT}`);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('Received SIGTERM, shutting down...');
+  server.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
 });
 
 module.exports = { app, server };
