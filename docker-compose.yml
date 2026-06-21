@@ -10,6 +10,7 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=5000
+      - HOST=0.0.0.0
       - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
       - FIREBASE_CLIENT_EMAIL=${FIREBASE_CLIENT_EMAIL}
       - FIREBASE_PRIVATE_KEY=${FIREBASE_PRIVATE_KEY}
@@ -17,8 +18,8 @@ services:
       - REDIS_PORT=6379
       - JWT_SECRET=${JWT_SECRET}
       - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
-      - CORS_ORIGIN=${CORS_ORIGIN}
-      - SOCKET_CORS_ORIGIN=${SOCKET_CORS_ORIGIN}
+      - CORS_ORIGIN=*
+      - SOCKET_CORS_ORIGIN=*
     ports:
       - "5000:5000"
     depends_on:
@@ -28,11 +29,6 @@ services:
       - ./uploads:/app/uploads
     networks:
       - admin-network
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
 
   redis:
     image: redis:7-alpine
@@ -42,27 +38,7 @@ services:
       - "6379:6379"
     volumes:
       - redis-data:/data
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-}
-    networks:
-      - admin-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  nginx:
-    image: nginx:alpine
-    container_name: admin-nginx
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./ssl:/etc/nginx/ssl:ro
-    depends_on:
-      - backend
+    command: redis-server --appendonly yes
     networks:
       - admin-network
 
