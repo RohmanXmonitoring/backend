@@ -1,5 +1,5 @@
+// src/config/redis.js
 const redis = require('redis');
-const { promisify } = require('util');
 
 class RedisConfig {
   constructor() {
@@ -13,21 +13,26 @@ class RedisConfig {
       const redisUrl = process.env.REDIS_URL || 
         `redis://${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || 6379}`;
 
+      // Skip Redis in Railway if not configured
+      if (process.env.RAILWAY_STATIC_URL && !process.env.REDIS_URL) {
+        console.warn('⚠️ Redis not configured on Railway, using in-memory fallback');
+        this.isConnected = false;
+        return;
+      }
+
       this.client = redis.createClient({
         url: redisUrl,
         password: process.env.REDIS_PASSWORD,
-        retry_strategy: (options) => {
-          if (options.error && options.error.code === 'ECONNREFUSED') {
-            console.error('❌ Redis connection refused');
-            return new Error('Redis connection refused');
-          }
-          if (options.total_retry_time > 1000 * 60 * 60) {
-            return new Error('Retry time exhausted');
-          }
-          if (options.attempt > 10) {
-            return new Error('Max retries exceeded');
-          }
-          return Math.min(options.attempt * 100, 3000);
+        socket: {
+          reconnectStrategy: (retries) => {
+            if (retries > 10) {
+              console.error('Redis max retries reached');
+              return new Error('Redis max retries reached');
+            }
+            return Math.min(retries * 100, 3000);
+          },
+          connectTimeout: 5000,
+          keepAlive: 30000
         }
       });
 
@@ -38,7 +43,7 @@ class RedisConfig {
 
       this.client.on('error', (err) => {
         this.isConnected = false;
-        console.error('❌ Redis error:', err);
+        console.error('❌ Redis error:', err.message);
       });
 
       this.client.on('end', () => {
@@ -46,51 +51,24 @@ class RedisConfig {
         console.warn('⚠️ Redis connection closed');
       });
 
-      // Promisify methods
-      this.get = promisify(this.client.get).bind(this.client);
-      this.set = promisify(this.client.set).bind(this.client);
-      this.del = promisify(this.client.del).bind(this.client);
-      this.hget = promisify(this.client.hget).bind(this.client);
-      this.hset = promisify(this.client.hset).bind(this.client);
-      this.hdel = promisify(this.client.hdel).bind(this.client);
-      this.hgetall = promisify(this.client.hgetall).bind(this.client);
-      this.lpush = promisify(this.client.lpush).bind(this.client);
-      this.rpush = promisify(this.client.rpush).bind(this.client);
-      this.lpop = promisify(this.client.lpop).bind(this.client);
-      this.rpop = promisify(this.client.rpop).bind(this.client);
-      this.lrange = promisify(this.client.lrange).bind(this.client);
-      this.llen = promisify(this.client.llen).bind(this.client);
-      this.sadd = promisify(this.client.sadd).bind(this.client);
-      this.srem = promisify(this.client.srem).bind(this.client);
-      this.sismember = promisify(this.client.sismember).bind(this.client);
-      this.smembers = promisify(this.client.smembers).bind(this.client);
-      this.expire = promisify(this.client.expire).bind(this.client);
-      this.ttl = promisify(this.client.ttl).bind(this.client);
-      this.keys = promisify(this.client.keys).bind(this.client);
-      this.flushall = promisify(this.client.flushall).bind(this.client);
+      // Connect
+      this.client.connect().catch((err) => {
+        console.error('❌ Redis connection failed:', err.message);
+        this.isConnected = false;
+      });
 
     } catch (error) {
-      console.error('❌ Redis initialization error:', error);
-    }
-  }
-
-  async setCache(key, value, ttl = 3600) {
-    try {
-      const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
-      await this.set(key, stringValue);
-      if (ttl > 0) {
-        await this.expire(key, ttl);
-      }
-      return true;
-    } catch (error) {
-      console.error('Redis setCache error:', error);
-      return false;
+      console.error('❌ Redis initialization error:', error.message);
+      this.isConnected = false;
     }
   }
 
   async getCache(key) {
+    if (!this.isConnected || !this.client) {
+      return null;
+    }
     try {
-      const value = await this.get(key);
+      const value = await this.client.get(key);
       if (value) {
         try {
           return JSON.parse(value);
@@ -100,27 +78,36 @@ class RedisConfig {
       }
       return null;
     } catch (error) {
-      console.error('Redis getCache error:', error);
+      console.error('Redis getCache error:', error.message);
       return null;
     }
   }
 
-  async deleteCache(key) {
+  async setCache(key, value, ttl = 3600) {
+    if (!this.isConnected || !this.client) {
+      return false;
+    }
     try {
-      await this.del(key);
+      const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
+      await this.client.set(key, stringValue, {
+        EX: ttl
+      });
       return true;
     } catch (error) {
-      console.error('Redis deleteCache error:', error);
+      console.error('Redis setCache error:', error.message);
       return false;
     }
   }
 
-  async flushCache() {
+  async deleteCache(key) {
+    if (!this.isConnected || !this.client) {
+      return false;
+    }
     try {
-      await this.flushall();
+      await this.client.del(key);
       return true;
     } catch (error) {
-      console.error('Redis flushCache error:', error);
+      console.error('Redis deleteCache error:', error.message);
       return false;
     }
   }
@@ -137,41 +124,35 @@ class RedisConfig {
     return this.deleteCache(`session:${userId}`);
   }
 
-  async setUserToken(userId, token, ttl = 900) {
-    return this.setCache(`token:${userId}`, token, ttl);
-  }
-
-  async getUserToken(userId) {
-    return this.getCache(`token:${userId}`);
-  }
-
-  async deleteUserToken(userId) {
-    return this.deleteCache(`token:${userId}`);
-  }
-
-  async setRefreshToken(userId, refreshToken, ttl = 604800) {
-    return this.setCache(`refresh:${userId}`, refreshToken, ttl);
-  }
-
-  async getRefreshToken(userId) {
-    return this.getCache(`refresh:${userId}`);
-  }
-
-  async deleteRefreshToken(userId) {
-    return this.deleteCache(`refresh:${userId}`);
-  }
-
-  async getOnlineUsers() {
-    return this.smembers('online_users');
-  }
-
   async setUserOnline(userId) {
-    await this.sadd('online_users', userId);
-    await this.expire('online_users', 300);
+    if (!this.isConnected || !this.client) return;
+    try {
+      await this.client.sAdd('online_users', userId);
+      await this.client.expire('online_users', 300);
+    } catch (error) {
+      console.error('Redis setUserOnline error:', error.message);
+    }
   }
 
   async setUserOffline(userId) {
-    await this.srem('online_users', userId);
+    if (!this.isConnected || !this.client) return;
+    try {
+      await this.client.sRem('online_users', userId);
+    } catch (error) {
+      console.error('Redis setUserOffline error:', error.message);
+    }
+  }
+
+  async getOnlineUsers() {
+    if (!this.isConnected || !this.client) {
+      return [];
+    }
+    try {
+      return await this.client.sMembers('online_users');
+    } catch (error) {
+      console.error('Redis getOnlineUsers error:', error.message);
+      return [];
+    }
   }
 
   isConnected() {
