@@ -1,3 +1,4 @@
+// src/utils/response.js
 class ApiResponse {
   static success(res, data = null, message = 'Success', statusCode = 200) {
     return res.status(statusCode).json({
@@ -62,18 +63,6 @@ class ApiResponse {
       },
       timestamp: new Date().toISOString()
     });
-  }
-
-  static paginateResponse(data, total, page, limit) {
-    return {
-      data,
-      pagination: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit)
-      }
-    };
   }
 }
 
