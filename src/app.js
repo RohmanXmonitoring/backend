@@ -37,7 +37,7 @@ const logger = require('./utils/logger');
 const app = express();
 const server = http.createServer(app);
 
-// Socket.IO setup with Railway compatible configuration
+// Socket.IO setup
 const io = socketIO(server, {
   cors: {
     origin: process.env.SOCKET_CORS_ORIGIN?.split(',') || ['*'],
@@ -55,17 +55,14 @@ const io = socketIO(server, {
 global.io = io;
 
 // ===== MIDDLEWARE =====
-// Security headers with Railway compatibility
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
-  contentSecurityPolicy: false, // Disable for Railway
+  contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false
 }));
 
-// Compression
 app.use(compression());
 
-// CORS - Allow all in Railway
 app.use(cors({
   origin: '*',
   credentials: true,
@@ -73,18 +70,15 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
-// Body parser with increased limits
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Security sanitization
 app.use(validator.sanitizeXSS);
 app.use(validator.sanitizeMongo);
 
-// Static files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Rate limiting with Railway compatibility
+// Rate limiting
 app.use('/api/auth', RateLimiter.create({
   windowMs: 15 * 60 * 1000,
   max: 50,
@@ -98,7 +92,100 @@ app.use('/api', RateLimiter.create({
 }));
 
 // ===== ROUTES =====
-// Health check - MUST be first and simple
+
+// ROOT ROUTE - Menampilkan informasi API
+app.get('/', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Admin Backend API',
+    version: '1.0.0',
+    status: 'running',
+    environment: process.env.NODE_ENV,
+    endpoints: {
+      health: '/health',
+      api: '/api',
+      auth: '/api/auth',
+      users: '/api/users',
+      devices: '/api/devices',
+      licenses: '/api/licenses',
+      pins: '/api/pins',
+      notifications: '/api/notifications',
+      dashboard: '/api/dashboard'
+    },
+    documentation: 'https://github.com/your-username/admin-backend',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// API ROOT - Menampilkan semua endpoint API
+app.get('/api', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Admin Backend API v1.0.0',
+    version: '1.0.0',
+    endpoints: {
+      auth: {
+        login: 'POST /api/auth/login',
+        register: 'POST /api/auth/register',
+        refresh: 'POST /api/auth/refresh',
+        logout: 'POST /api/auth/logout',
+        forgotPassword: 'POST /api/auth/forgot-password',
+        resetPassword: 'POST /api/auth/reset-password',
+        me: 'GET /api/auth/me'
+      },
+      users: {
+        list: 'GET /api/users',
+        create: 'POST /api/users',
+        get: 'GET /api/users/:id',
+        update: 'PUT /api/users/:id',
+        delete: 'DELETE /api/users/:id',
+        suspend: 'POST /api/users/:id/suspend',
+        activate: 'POST /api/users/:id/activate'
+      },
+      devices: {
+        list: 'GET /api/devices',
+        get: 'GET /api/devices/:id',
+        update: 'PUT /api/devices/:id',
+        delete: 'DELETE /api/devices/:id',
+        lostMode: 'POST /api/devices/:id/lost-mode'
+      },
+      licenses: {
+        list: 'GET /api/licenses',
+        create: 'POST /api/licenses',
+        get: 'GET /api/licenses/:id',
+        update: 'PUT /api/licenses/:id',
+        delete: 'DELETE /api/licenses/:id',
+        extend: 'POST /api/licenses/:id/extend'
+      },
+      pins: {
+        list: 'GET /api/pins',
+        create: 'POST /api/pins',
+        get: 'GET /api/pins/:id',
+        delete: 'DELETE /api/pins/:id',
+        disable: 'POST /api/pins/:id/disable'
+      },
+      notifications: {
+        list: 'GET /api/notifications',
+        create: 'POST /api/notifications',
+        get: 'GET /api/notifications/:id',
+        delete: 'DELETE /api/notifications/:id',
+        broadcast: 'POST /api/notifications/broadcast'
+      },
+      dashboard: {
+        stats: 'GET /api/dashboard/stats',
+        statistics: 'GET /api/dashboard/statistics',
+        recent: 'GET /api/dashboard/recent-activity'
+      },
+      system: {
+        health: 'GET /health',
+        info: 'GET /api/system-info'
+      }
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Health check
 app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'online',
@@ -106,21 +193,10 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     memory: process.memoryUsage(),
-    version: process.env.npm_package_version || '1.0.0'
-  });
-});
-
-// Root route for Railway
-app.get('/', (req, res) => {
-  res.status(200).json({
-    message: 'Admin Backend API',
-    version: '1.0.0',
-    status: 'running',
-    endpoints: {
-      health: '/health',
-      api: '/api',
-      docs: '/api-docs'
-    }
+    version: process.env.npm_package_version || '1.0.0',
+    environment: process.env.NODE_ENV,
+    firebase: firebase.isInitialized() ? 'connected' : 'disconnected',
+    redis: redis.isConnected() ? 'connected' : 'disconnected'
   });
 });
 
@@ -128,15 +204,21 @@ app.get('/', (req, res) => {
 app.get('/api/system-info', (req, res) => {
   const os = require('os');
   res.status(200).json({
-    nodeVersion: process.version,
-    platform: os.platform(),
-    arch: os.arch(),
-    cpus: os.cpus().length,
-    totalMemory: os.totalmem(),
-    freeMemory: os.freemem(),
-    uptime: process.uptime(),
-    env: process.env.NODE_ENV,
-    railway: !!process.env.RAILWAY_STATIC_URL
+    success: true,
+    data: {
+      nodeVersion: process.version,
+      platform: os.platform(),
+      arch: os.arch(),
+      cpus: os.cpus().length,
+      totalMemory: os.totalmem(),
+      freeMemory: os.freemem(),
+      uptime: process.uptime(),
+      env: process.env.NODE_ENV,
+      railway: !!process.env.RAILWAY_STATIC_URL,
+      port: process.env.PORT,
+      host: process.env.HOST
+    },
+    timestamp: new Date().toISOString()
   });
 });
 
@@ -165,7 +247,6 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 5000;
 const HOST = '0.0.0.0';
 
-// Add error handling for server
 server.on('error', (error) => {
   logger.error('Server error:', error);
   if (error.code === 'EADDRINUSE') {
@@ -180,10 +261,12 @@ server.on('listening', () => {
   logger.info(`🔒 Railway: ${!!process.env.RAILWAY_STATIC_URL}`);
 });
 
-// Start server with timeout for Railway
+// Start server
 const startServer = () => {
   server.listen(PORT, HOST, () => {
     logger.info(`✅ Server started successfully on port ${PORT}`);
+    logger.info(`📍 Base URL: http://${HOST}:${PORT}`);
+    logger.info(`📋 API Docs: http://${HOST}:${PORT}/api`);
   });
 };
 
@@ -198,19 +281,16 @@ async function gracefulShutdown() {
   logger.info('🔄 Received shutdown signal...');
   
   try {
-    // Close server
     server.close(() => {
       logger.info('✅ HTTP server closed');
     });
     
-    // Close Socket.IO
     if (io) {
       io.close(() => {
         logger.info('✅ Socket.IO server closed');
       });
     }
     
-    // Close Redis
     if (redis.isConnected()) {
       await redis.getClient().quit();
       logger.info('✅ Redis connection closed');
