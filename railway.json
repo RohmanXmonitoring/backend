@@ -1,0 +1,54 @@
+{
+  "build": {
+    "builder": "NIXPACKS",
+    "buildCommand": "npm install --production=false && npm run build"
+  },
+  "deploy": {
+    "startCommand": "pm2-runtime src/app.js",
+    "healthcheckPath": "/health",
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 3
+  },
+  "env": {
+    "NODE_ENV": {
+      "value": "production",
+      "description": "Node environment"
+    },
+    "PORT": {
+      "value": "5000",
+      "description": "Server port"
+    },
+    "FIREBASE_PROJECT_ID": {
+      "required": true,
+      "description": "Firebase project ID"
+    },
+    "FIREBASE_CLIENT_EMAIL": {
+      "required": true,
+      "description": "Firebase client email"
+    },
+    "FIREBASE_PRIVATE_KEY": {
+      "required": true,
+      "description": "Firebase private key"
+    },
+    "REDIS_URL": {
+      "required": false,
+      "description": "Redis URL"
+    },
+    "JWT_SECRET": {
+      "required": true,
+      "description": "JWT secret key"
+    },
+    "JWT_REFRESH_SECRET": {
+      "required": true,
+      "description": "JWT refresh secret"
+    },
+    "CORS_ORIGIN": {
+      "required": false,
+      "description": "CORS allowed origins"
+    },
+    "SOCKET_CORS_ORIGIN": {
+      "required": false,
+      "description": "Socket CORS allowed origins"
+    }
+  }
+}
