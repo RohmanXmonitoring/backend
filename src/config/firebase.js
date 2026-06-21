@@ -21,33 +21,19 @@ class FirebaseConfig {
       const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
       let privateKey = process.env.FIREBASE_PRIVATE_KEY;
 
-      // Handle private key properly
-      if (privateKey) {
-        // Remove quotes if present
-        privateKey = privateKey.replace(/^"|"$/g, '');
-        // Replace escaped newlines
-        privateKey = privateKey.replace(/\\n/g, '\n');
-      }
-
-      // Validate required fields
+      // Jika tidak ada credentials, gunakan mock
       if (!projectId || !clientEmail || !privateKey) {
-        console.error('❌ Missing Firebase credentials in environment variables');
-        console.error('Required: FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY');
-        
-        // Use mock for development if needed
-        if (process.env.NODE_ENV === 'development') {
-          console.warn('⚠️ Running in development mode without Firebase');
-          this.initialized = true;
-          return;
-        }
-        throw new Error('Firebase credentials are required');
+        console.warn('⚠️ Firebase credentials not found, using mock mode');
+        console.warn('Required: FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY');
+        this.initialized = false;
+        return;
       }
 
       // Initialize Firebase
       const serviceAccount = {
         projectId,
         clientEmail,
-        privateKey
+        privateKey: privateKey.replace(/\\n/g, '\n')
       };
 
       admin.initializeApp({
@@ -60,44 +46,28 @@ class FirebaseConfig {
 
     } catch (error) {
       console.error('❌ Firebase initialization error:', error.message);
-      if (process.env.NODE_ENV === 'production') {
-        console.error('Firebase is required in production mode');
-        process.exit(1);
-      }
       this.initialized = false;
     }
   }
 
+  isInitialized() {
+    return this.initialized;
+  }
+
   getAdmin() {
-    if (!this.initialized) {
-      throw new Error('Firebase not initialized');
-    }
-    return admin;
+    return this.initialized ? admin : null;
   }
 
   getAuth() {
-    if (!this.initialized) {
-      throw new Error('Firebase not initialized');
-    }
-    return admin.auth();
+    return this.initialized ? admin.auth() : null;
   }
 
   getFirestore() {
-    if (!this.initialized) {
-      throw new Error('Firebase not initialized');
-    }
-    return admin.firestore();
+    return this.initialized ? admin.firestore() : null;
   }
 
   getMessaging() {
-    if (!this.initialized) {
-      throw new Error('Firebase not initialized');
-    }
-    return admin.messaging();
-  }
-
-  isInitialized() {
-    return this.initialized;
+    return this.initialized ? admin.messaging() : null;
   }
 }
 
