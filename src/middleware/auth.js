@@ -1,3 +1,4 @@
+// src/middleware/auth.js
 const jwt = require('../config/jwt');
 const User = require('../models/User');
 const Session = require('../models/Session');
@@ -65,29 +66,11 @@ const auth = {
 
       next();
     } catch (error) {
-      console.error('Auth middleware error:', error);
+      console.error('Auth middleware error:', error.message);
       return res.status(401).json({
         success: false,
         message: 'Invalid or expired token'
       });
-    }
-  },
-
-  async authenticateOptional(req, res, next) {
-    try {
-      const token = req.headers.authorization?.split(' ')[1];
-      
-      if (token) {
-        const decoded = jwt.verifyToken(token);
-        const user = await User.findById(decoded.userId);
-        if (user && user.status !== 'deleted') {
-          req.user = user;
-        }
-      }
-      
-      next();
-    } catch {
-      next();
     }
   },
 
