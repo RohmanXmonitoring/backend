@@ -1,3 +1,4 @@
+// src/middleware/validator.js
 const { validationResult } = require('express-validator');
 const xss = require('xss');
 
@@ -43,21 +44,17 @@ const validator = {
     next();
   },
 
-  sanitizeMongo(req, res, next) {
-    const sanitizeString = (str) => {
-      if (typeof str !== 'string') return str;
-      // Remove dangerous MongoDB operators
-      return str.replace(/\$/g, '').replace(/\./g, '');
-    };
-
+  // HAPUS sanitizeMongo karena kita pakai Firebase
+  // Ganti dengan sanitize sederhana
+  sanitizeInput(req, res, next) {
     const sanitizeObject = (obj) => {
       if (typeof obj === 'string') {
-        return sanitizeString(obj);
+        return obj.replace(/[^\w\s\-.,@]/g, '');
       }
       if (typeof obj === 'object' && obj !== null) {
         const sanitized = {};
         for (const [key, value] of Object.entries(obj)) {
-          sanitized[sanitizeString(key)] = sanitizeObject(value);
+          sanitized[key] = sanitizeObject(value);
         }
         return sanitized;
       }
