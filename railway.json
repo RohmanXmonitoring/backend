@@ -19,6 +19,27 @@
     },
     "HOST": {
       "value": "0.0.0.0"
+    },
+    "FIREBASE_PROJECT_ID": {
+      "required": true
+    },
+    "FIREBASE_CLIENT_EMAIL": {
+      "required": true
+    },
+    "FIREBASE_PRIVATE_KEY": {
+      "required": true
+    },
+    "JWT_SECRET": {
+      "required": true
+    },
+    "JWT_REFRESH_SECRET": {
+      "required": true
+    },
+    "CORS_ORIGIN": {
+      "value": "*"
+    },
+    "SOCKET_CORS_ORIGIN": {
+      "value": "*"
     }
   }
 }
