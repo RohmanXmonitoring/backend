@@ -50,7 +50,7 @@ const errorHandler = {
       });
     }
 
-    // Default error response - never expose stack in production
+    // Default error response
     const statusCode = err.statusCode || 500;
     const message = statusCode === 500 
       ? 'Internal server error' 
@@ -66,13 +66,24 @@ const errorHandler = {
   notFound(req, res) {
     res.status(404).json({
       success: false,
-      message: `Route ${req.method} ${req.path} not found`
+      message: `Route ${req.method} ${req.path} not found`,
+      availableEndpoints: {
+        root: '/',
+        api: '/api',
+        health: '/health',
+        auth: '/api/auth',
+        users: '/api/users',
+        devices: '/api/devices',
+        licenses: '/api/licenses',
+        pins: '/api/pins',
+        notifications: '/api/notifications',
+        dashboard: '/api/dashboard'
+      }
     });
   },
 
   handleUncaughtException(err) {
     logger.error('Uncaught Exception:', err);
-    // Don't exit in production, just log
     if (process.env.NODE_ENV !== 'production') {
       process.exit(1);
     }
@@ -80,7 +91,6 @@ const errorHandler = {
 
   handleUnhandledRejection(err) {
     logger.error('Unhandled Rejection:', err);
-    // Don't exit in production, just log
     if (process.env.NODE_ENV !== 'production') {
       process.exit(1);
     }
