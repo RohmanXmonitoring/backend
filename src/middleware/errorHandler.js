@@ -1,3 +1,4 @@
+// src/middleware/errorHandler.js
 const logger = require('../utils/logger');
 
 const errorHandler = {
@@ -21,7 +22,7 @@ const errorHandler = {
       });
     }
 
-    if (err.name === 'UnauthorizedError') {
+    if (err.name === 'UnauthorizedError' || err.name === 'JsonWebTokenError') {
       return res.status(401).json({
         success: false,
         message: 'Unauthorized access'
@@ -49,7 +50,7 @@ const errorHandler = {
       });
     }
 
-    // Default error response
+    // Default error response - never expose stack in production
     const statusCode = err.statusCode || 500;
     const message = statusCode === 500 
       ? 'Internal server error' 
@@ -69,14 +70,20 @@ const errorHandler = {
     });
   },
 
-  async handleUncaughtException(err) {
+  handleUncaughtException(err) {
     logger.error('Uncaught Exception:', err);
-    process.exit(1);
+    // Don't exit in production, just log
+    if (process.env.NODE_ENV !== 'production') {
+      process.exit(1);
+    }
   },
 
-  async handleUnhandledRejection(err) {
+  handleUnhandledRejection(err) {
     logger.error('Unhandled Rejection:', err);
-    process.exit(1);
+    // Don't exit in production, just log
+    if (process.env.NODE_ENV !== 'production') {
+      process.exit(1);
+    }
   }
 };
 
