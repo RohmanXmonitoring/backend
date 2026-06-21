@@ -1,7 +1,13 @@
 {
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "npm install"
+    "buildCommand": "npm install --production=false",
+    "watchPatterns": [
+      "src/**/*.js",
+      "package.json",
+      "package-lock.json",
+      "railway.json"
+    ]
   },
   "deploy": {
     "startCommand": "node src/app.js",
@@ -9,7 +15,28 @@
     "healthcheckTimeout": 300,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10,
-    "sleepApplication": false
+    "sleepApplication": false,
+    "numReplicas": 1,
+    "maxReplicas": 2,
+    "minReplicas": 1,
+    "scale": {
+      "cpu": 1,
+      "memory": 2
+    },
+    "preDeploy": {
+      "command": "npm run build",
+      "timeout": 300
+    },
+    "postDeploy": {
+      "command": "echo '✅ Deployment successful!'",
+      "timeout": 30
+    },
+    "healthcheck": {
+      "path": "/health",
+      "interval": 30,
+      "timeout": 10,
+      "retries": 3
+    }
   },
   "env": {
     "NODE_ENV": {
@@ -22,25 +49,162 @@
       "value": "0.0.0.0"
     },
     "FIREBASE_PROJECT_ID": {
-      "required": false
+      "required": true,
+      "description": "Firebase Project ID"
     },
     "FIREBASE_CLIENT_EMAIL": {
-      "required": false
+      "required": true,
+      "description": "Firebase Client Email"
     },
     "FIREBASE_PRIVATE_KEY": {
-      "required": false
+      "required": true,
+      "description": "Firebase Private Key (JSON format with escaped newlines)"
+    },
+    "FIREBASE_DATABASE_URL": {
+      "required": true,
+      "description": "Firebase Database URL"
     },
     "JWT_SECRET": {
-      "value": "your-super-secret-jwt-key-change-this"
+      "required": true,
+      "description": "JWT Secret Key (min 32 characters)"
     },
     "JWT_REFRESH_SECRET": {
-      "value": "your-super-secret-refresh-key-change-this"
+      "required": true,
+      "description": "JWT Refresh Secret Key (min 32 characters)"
+    },
+    "JWT_EXPIRES_IN": {
+      "value": "15m",
+      "description": "JWT Token Expiry"
+    },
+    "JWT_REFRESH_EXPIRES_IN": {
+      "value": "7d",
+      "description": "JWT Refresh Token Expiry"
     },
     "CORS_ORIGIN": {
-      "value": "*"
+      "value": "*",
+      "description": "CORS Allowed Origins (comma separated)"
     },
     "SOCKET_CORS_ORIGIN": {
-      "value": "*"
+      "value": "*",
+      "description": "Socket.IO CORS Allowed Origins"
+    },
+    "REDIS_URL": {
+      "required": false,
+      "description": "Redis Connection URL (optional)"
+    },
+    "FRONTEND_URL": {
+      "required": true,
+      "description": "Frontend Application URL for Invitation Links"
+    },
+    "EMAIL_FROM": {
+      "required": false,
+      "description": "Email Sender Address"
+    },
+    "EMAIL_SERVICE": {
+      "value": "console",
+      "description": "Email Service: console, sendgrid, nodemailer"
+    },
+    "SENDGRID_API_KEY": {
+      "required": false,
+      "description": "SendGrid API Key (if using SendGrid)"
+    },
+    "SMTP_HOST": {
+      "required": false,
+      "description": "SMTP Host (if using Nodemailer)"
+    },
+    "SMTP_PORT": {
+      "required": false,
+      "description": "SMTP Port"
+    },
+    "SMTP_USER": {
+      "required": false,
+      "description": "SMTP Username"
+    },
+    "SMTP_PASS": {
+      "required": false,
+      "description": "SMTP Password"
+    },
+    "LOG_LEVEL": {
+      "value": "info",
+      "description": "Log Level: error, warn, info, debug"
+    },
+    "CACHE_TTL": {
+      "value": "3600",
+      "description": "Cache TTL in seconds"
+    },
+    "SCREEN_CAPTURE_INTERVAL": {
+      "value": "1000",
+      "description": "Screen capture interval in ms"
+    },
+    "MAX_RECORDING_DURATION": {
+      "value": "1800",
+      "description": "Max recording duration in seconds"
+    },
+    "RECORDING_QUALITY": {
+      "value": "medium",
+      "description": "Recording quality: low, medium, high"
+    },
+    "INVITATION_EXPIRY_DAYS": {
+      "value": "7",
+      "description": "Invitation expiry in days"
+    },
+    "MAX_INVITATIONS_PER_BATCH": {
+      "value": "50",
+      "description": "Max invitations per bulk send"
+    },
+    "RATE_LIMIT_WINDOW": {
+      "value": "15",
+      "description": "Rate limit window in minutes"
+    },
+    "RATE_LIMIT_MAX": {
+      "value": "100",
+      "description": "Max requests per window"
+    }
+  },
+  "services": {
+    "backend": {
+      "name": "admin-backend",
+      "description": "Admin Backend API Server",
+      "port": 5000,
+      "env": {
+        "NODE_ENV": "production"
+      },
+      "volumes": {
+        "logs": {
+          "mountPath": "/app/logs",
+          "size": "1GB"
+        },
+        "uploads": {
+          "mountPath": "/app/uploads",
+          "size": "5GB"
+        }
+      }
+    }
+  },
+  "plugins": [
+    {
+      "name": "health-check",
+      "path": "/health",
+      "interval": 30,
+      "timeout": 10
+    },
+    {
+      "name": "auto-scaling",
+      "enabled": true,
+      "minReplicas": 1,
+      "maxReplicas": 3,
+      "targetCPU": 70,
+      "targetMemory": 80
+    }
+  ],
+  "notifications": {
+    "deploy": {
+      "success": true,
+      "failure": true
+    },
+    "health": {
+      "unhealthy": true,
+      "recovery": true
     }
   }
-}
+  }
