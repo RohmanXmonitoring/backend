@@ -35,30 +35,18 @@ const server = http.createServer(app);
 // ===== ERROR HANDLING UNTUK STARTUP =====
 process.on('uncaughtException', (err) => {
   console.error('Uncaught Exception:', err);
-  // Jangan exit di production
-  if (process.env.NODE_ENV !== 'production') {
-    process.exit(1);
-  }
 });
 
 process.on('unhandledRejection', (err) => {
   console.error('Unhandled Rejection:', err);
-  // Jangan exit di production
-  if (process.env.NODE_ENV !== 'production') {
-    process.exit(1);
-  }
 });
 
 // ===== MIDDLEWARE =====
-try {
-  app.use(helmet({
-    crossOriginResourcePolicy: { policy: "cross-origin" },
-    contentSecurityPolicy: false,
-    crossOriginEmbedderPolicy: false
-  }));
-} catch (err) {
-  console.error('Helmet error:', err);
-}
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false
+}));
 
 app.use(compression());
 
@@ -72,7 +60,7 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Sanitization
+// Sanitization sederhana
 app.use((req, res, next) => {
   if (req.body) {
     Object.keys(req.body).forEach(key => {
@@ -86,7 +74,7 @@ app.use((req, res, next) => {
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// ===== ROUTES - SEDERHANAKAN UNTUK TESTING =====
+// ===== ROUTES =====
 
 // ROOT ROUTE
 app.get('/', (req, res) => {
@@ -99,7 +87,7 @@ app.get('/', (req, res) => {
   });
 });
 
-// HEALTH CHECK - YANG PALING PENTING
+// HEALTH CHECK
 app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'online',
@@ -112,7 +100,10 @@ app.get('/health', (req, res) => {
       heapUsed: process.memoryUsage().heapUsed
     },
     version: process.env.npm_package_version || '1.0.0',
-    environment: process.env.NODE_ENV || 'production'
+    environment: process.env.NODE_ENV || 'production',
+    // Cek koneksi dengan aman
+    firebase: firebase && firebase.isInitialized ? firebase.isInitialized() : false,
+    redis: redis && redis.isConnected ? redis.isConnected() : false
   });
 });
 
@@ -143,17 +134,13 @@ app.get('/api/status', (req, res) => {
 });
 
 // ===== API ROUTES =====
-try {
-  app.use('/api/auth', authRoutes);
-  app.use('/api/users', auth.authenticate, userRoutes);
-  app.use('/api/devices', auth.authenticate, deviceRoutes);
-  app.use('/api/licenses', auth.authenticate, licenseRoutes);
-  app.use('/api/pins', auth.authenticate, pinRoutes);
-  app.use('/api/notifications', auth.authenticate, notificationRoutes);
-  app.use('/api/dashboard', auth.authenticate, dashboardRoutes);
-} catch (err) {
-  console.error('Route registration error:', err);
-}
+app.use('/api/auth', authRoutes);
+app.use('/api/users', auth.authenticate, userRoutes);
+app.use('/api/devices', auth.authenticate, deviceRoutes);
+app.use('/api/licenses', auth.authenticate, licenseRoutes);
+app.use('/api/pins', auth.authenticate, pinRoutes);
+app.use('/api/notifications', auth.authenticate, notificationRoutes);
+app.use('/api/dashboard', auth.authenticate, dashboardRoutes);
 
 // ===== 404 HANDLER =====
 app.use((req, res) => {
