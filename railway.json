@@ -6,9 +6,10 @@
   "deploy": {
     "startCommand": "node src/app.js",
     "healthcheckPath": "/health",
-    "healthcheckTimeout": 100,
+    "healthcheckTimeout": 300,
     "restartPolicyType": "ON_FAILURE",
-    "restartPolicyMaxRetries": 5
+    "restartPolicyMaxRetries": 10,
+    "sleepApplication": false
   },
   "env": {
     "NODE_ENV": {
@@ -21,19 +22,19 @@
       "value": "0.0.0.0"
     },
     "FIREBASE_PROJECT_ID": {
-      "required": true
+      "required": false
     },
     "FIREBASE_CLIENT_EMAIL": {
-      "required": true
+      "required": false
     },
     "FIREBASE_PRIVATE_KEY": {
-      "required": true
+      "required": false
     },
     "JWT_SECRET": {
-      "required": true
+      "value": "your-super-secret-jwt-key-change-this"
     },
     "JWT_REFRESH_SECRET": {
-      "required": true
+      "value": "your-super-secret-refresh-key-change-this"
     },
     "CORS_ORIGIN": {
       "value": "*"
