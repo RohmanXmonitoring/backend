@@ -1,54 +1,53 @@
 {
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "npm install --production=false && npm run build"
+    "buildCommand": "npm install --production=false"
   },
   "deploy": {
-    "startCommand": "pm2-runtime src/app.js",
+    "startCommand": "node src/app.js",
     "healthcheckPath": "/health",
+    "healthcheckTimeout": 100,
     "restartPolicyType": "ON_FAILURE",
-    "restartPolicyMaxRetries": 3
+    "restartPolicyMaxRetries": 10,
+    "numReplicas": 1,
+    "sleepApplication": false
   },
   "env": {
     "NODE_ENV": {
-      "value": "production",
-      "description": "Node environment"
+      "value": "production"
     },
     "PORT": {
-      "value": "5000",
-      "description": "Server port"
+      "value": "5000"
+    },
+    "HOST": {
+      "value": "0.0.0.0"
     },
     "FIREBASE_PROJECT_ID": {
-      "required": true,
-      "description": "Firebase project ID"
+      "required": true
     },
     "FIREBASE_CLIENT_EMAIL": {
-      "required": true,
-      "description": "Firebase client email"
+      "required": true
     },
     "FIREBASE_PRIVATE_KEY": {
-      "required": true,
-      "description": "Firebase private key"
-    },
-    "REDIS_URL": {
-      "required": false,
-      "description": "Redis URL"
+      "required": true
     },
     "JWT_SECRET": {
-      "required": true,
-      "description": "JWT secret key"
+      "required": true
     },
     "JWT_REFRESH_SECRET": {
-      "required": true,
-      "description": "JWT refresh secret"
+      "required": true
     },
     "CORS_ORIGIN": {
-      "required": false,
-      "description": "CORS allowed origins"
+      "value": "*"
     },
     "SOCKET_CORS_ORIGIN": {
-      "required": false,
-      "description": "Socket CORS allowed origins"
+      "value": "*"
+    },
+    "LOG_LEVEL": {
+      "value": "info"
+    },
+    "NPM_CONFIG_PRODUCTION": {
+      "value": "false"
     }
   }
 }
